@@ -6,17 +6,20 @@ CREATE TABLE employee (
 id INT NOT NULL AUTO_INCREMENT,
 first_name VARCHAR(30) NOT NULL,
 last_name VARCHAR(30) NOT NULL,
-role_id INT NOT NULL,
+department_id INT,
+role_id INT,
 manager_id INT NULL,
-PRIMARY KEY (id)
+PRIMARY KEY (id),
+FOREIGN KEY(role_id) REFERENCES roles(id)
 );
 
 CREATE TABLE role (
 id INT NOT NULL AUTO_INCREMENT,
 title VARCHAR(30) NOT NULL,
 salary DECIMAL(10,2) NULL,
-department_id INT NOT NULL,
-PRIMARY KEY (id)
+department_id INT,
+PRIMARY KEY (id),
+FOREIGN KEY(department_id) REFERENCES department(id)
 );
 
 CREATE TABLE department (
@@ -25,28 +28,64 @@ name VARCHAR(30) NOT NULL,
 PRIMARY KEY (id)
 );
 
-
-SELECT employee.id, employee.first_name, employee.last_name, role.title, role.salary, employee.role_id, role.id, employee.manager_id, role.department_id, department.id, department.name
+-- Full Table With Manager
+CREATE VIEW manager AS
+SELECT employee.id, employee.first_name, employee.last_name, role.title, role.salary, employee.role_id, role.id, employee.manager_id, role.department_id, department.id, department.name, CONCAT(m.first_name, " ", m.last_name) 'Manager' 
 FROM employee
 INNER JOIN role ON (employee.role_id=role.id)
-INNER JOIN department ON (role.department_id=department.id);
+INNER JOIN department ON (role.department_id=department.id)
+INNER JOIN employee m 
+ON (employee.manager_id = m.id);
 
 
-SELECT id FROM department WHERE department.name="Marketing";
 
-INSERT INTO department (name)
-VALUES ("Marketing");
+-- Full Table
+SELECT employee.id, employee.first_name, employee.last_name, role.title, role.salary, employee.role_id, role.id, employee.manager_id, role.department_id, department.id, department.name, NULL 'Manager' 
+FROM employee
+INNER JOIN role ON (employee.role_id=role.id)
+INNER JOIN department ON (role.department_id=department.id)
+WHERE (employee.manager_id IS NULL)
+UNION
+SELECT employee.id, employee.first_name, employee.last_name, role.title, role.salary, employee.role_id, role.id, employee.manager_id, role.department_id, department.id, department.name, CONCAT(m.first_name, " ", m.last_name) 'Manager' 
+FROM employee
+INNER JOIN role ON (employee.role_id=role.id)
+INNER JOIN department ON (role.department_id=department.id)
+INNER JOIN employee m 
+ON (employee.manager_id = m.id);
 
-INSERT INTO role (title, salary, department_id)
-VALUES ("email marketing specialist", 10000.50, (SELECT id FROM department WHERE name='Marketing'));
 
-INSERT INTO role (title, salary, department_id)
-VALUES ("email marketing manager", 15000.50, (SELECT id FROM department WHERE name='Marketing'));
 
-INSERT INTO employee (first_name, last_name, role_id)
-VALUES("Keeley", "Byerly", (SELECT id FROM role WHERE title="email marketing specialist"));
+-- Full Table
+SELECT a.id, a.first_name, a.last_name, a.title, a.salary, a.name, value 'Manager' FROM
+(SELECT a.id, a.first_name, a.last_name, b.title, b.salary, c.name, NULL 'Manager' 
+FROM employee a
+INNER JOIN role b ON (a.role_id=b.id)
+INNER JOIN department c ON (b.department_id=c.id)
+WHERE (a.manager_id IS NULL)
+UNION
+SELECT a.id, a.first_name, a.last_name, b.title, b.salary, c.name, CONCAT(m.first_name, " ", m.last_name) 'Manager' 
+FROM employee a
+INNER JOIN role b ON (a.role_id=b.id)
+INNER JOIN department c ON (b.department_id=c.id)
+INNER JOIN employee m 
+ON (a.manager_id = m.id)) AS A ORDER BY a.name;
 
-INSERT INTO employee (first_name, last_name, role_id)
-VALUES("Sarah", "Schmidt", (SELECT id FROM role WHERE title="email marketing manager"));
+
+-- Full VIEW 
+CREATE VIEW allemployees AS 
+(SELECT a.id, a.first_name, a.last_name, b.title, b.salary, c.name, NULL 'Manager' 
+FROM employee a
+INNER JOIN role b ON (a.role_id=b.id)
+INNER JOIN department c ON (b.department_id=c.id)
+WHERE (a.manager_id IS NULL)
+UNION
+SELECT a.id, a.first_name, a.last_name, b.title, b.salary, c.name, CONCAT(m.first_name, " ", m.last_name) 'Manager' 
+FROM employee a
+INNER JOIN role b ON (a.role_id=b.id)
+INNER JOIN department c ON (b.department_id=c.id)
+INNER JOIN employee m 
+ON (a.manager_id = m.id));
+
+SELECT * FROM allemployees ORDER BY name DESC;
 
 UPDATE employee SET manager_id=(SELECT * FROM(SELECT id FROM employee WHERE first_name="Sarah" AND last_name="Schmidt")tblTmp) WHERE id=1;
