@@ -134,8 +134,8 @@ const addData = async () => {
 }
 
 const newEmployee = async () => {
-    var employeeFinal = [];
-    let results = await getItems();
+    let employeeFinal = [];
+    let results = await getDepartments();
     let items = results.map(result => result.name);
     console.log("Let's get some more info:")
     let data = await inquirer.prompt([
@@ -166,31 +166,50 @@ const newEmployee = async () => {
         })
         let id = filteredDept[0].id;
         employeeFinal.push({ department_id: id });
-        console.log(department);
-        console.log(id)
-            ; connection.query(`SELECT role.title FROM role INNER JOIN department ON (role.department_id = department.id) WHERE department.id= ${id};`, function (err, res) {
-                if (err) throw err;
-                console.log(res);
-                inquirer.prompt(
-                    [
-                        {
-                            name: "roleName",
-                            type: "rawlist",
-                            message: "Role?",
-                            choices: function () {
-                                var choicesArray = [];
-                                for (role of res) {
-                                    choicesArray.push(role.title);
-                                }
-                                return choicesArray;
+        // console.log(department);
+        // console.log(id);
+        connection.query(`SELECT role.title FROM role INNER JOIN department ON (role.department_id = department.id) WHERE department.id= ${id};`, function (err, res) {
+            if (err) throw err;
+            // console.log(res);
+            inquirer.prompt(
+                [
+                    {
+                        name: "roleName",
+                        type: "rawlist",
+                        message: "Role?",
+                        choices: function () {
+                            var choicesArray = [];
+                            for (role of res) {
+                                choicesArray.push(role.title);
                             }
+                            return choicesArray;
                         }
-                    ]
-                )
-                    .then(answers => {
-                        console.log("roleName");
+                    }
+                ]
+            )
+                .then(answers => {
+                    let data = answers.roleName;
+                    console.log("where? ", data);
+                    connection.query(`SELECT * FROM role WHERE role.title="${data}";`, function (err, res) {
+                        if (err) throw err;
+                        console.log("What are we getting back ", res);
+                        let filteredRoles = res.filter(function (res) {
+                            return res.title == data;
+                        })
+                        let id = filteredRoles[0].id;
+                        employeeFinal.push({ role_id: id });
                     })
-            })
+                    connection.query("INSERT INTO employee (first_name, last_name, role_id) VALUES(?, ?, ?)", {
+                        first_name: employeeFinal.first_name,
+                        last_name: employeeFinal.last_name,
+                        role_id: employeeFinal.role_id
+                    }, function (err, res) {
+                        if (err) throw (err);
+                    }
+                    )
+                    // console.log("roleName");
+                })
+        })
 
     })
 }
@@ -264,16 +283,16 @@ const updateData = () => {
 }
 
 
-function getItems() {
+function getDepartments() {
     return new Promise((resolve, reject) => {
         connection.query("SELECT * FROM department", function (err, results) {
             if (err) reject(err);
             resolve(results);
-            let items = [];
+            let departments = [];
             for (const result of results) {
-                items.push(result.name);
+                departments.push(result.name);
             }
-            return items;
+            return departments;
         });
     })
 }
