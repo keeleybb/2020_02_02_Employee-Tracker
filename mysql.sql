@@ -28,17 +28,6 @@ name VARCHAR(30) NOT NULL,
 PRIMARY KEY (id)
 );
 
--- Full Table With Manager
-CREATE VIEW manager AS
-SELECT employee.id, employee.first_name, employee.last_name, role.title, role.salary, employee.role_id, role.id, employee.manager_id, role.department_id, department.id, department.name, CONCAT(m.first_name, " ", m.last_name) 'Manager' 
-FROM employee
-INNER JOIN role ON (employee.role_id=role.id)
-INNER JOIN department ON (role.department_id=department.id)
-INNER JOIN employee m 
-ON (employee.manager_id = m.id);
-
-
-
 -- Full Table
 SELECT employee.id, employee.first_name, employee.last_name, role.title, role.salary, employee.role_id, role.id, employee.manager_id, role.department_id, department.id, department.name, NULL 'Manager' 
 FROM employee
@@ -52,8 +41,6 @@ INNER JOIN role ON (employee.role_id=role.id)
 INNER JOIN department ON (role.department_id=department.id)
 INNER JOIN employee m 
 ON (employee.manager_id = m.id);
-
-
 
 -- Full Table
 SELECT a.id, a.first_name, a.last_name, a.title, a.salary, a.name, value 'Manager' FROM
@@ -87,5 +74,18 @@ INNER JOIN employee m
 ON (a.manager_id = m.id));
 
 SELECT * FROM allemployees ORDER BY name DESC;
+SELECT * FROM employee;
+SELECT * FROM department;
+SELECT * FROM role;
 
 UPDATE employee SET manager_id=(SELECT * FROM(SELECT id FROM employee WHERE first_name="Sarah" AND last_name="Schmidt")tblTmp) WHERE id=1;
+
+
+-- Full Table With Manager
+-- CREATE VIEW manager AS
+-- SELECT employee.id, employee.first_name, employee.last_name, role.title, role.salary, employee.role_id, role.id, employee.manager_id, role.department_id, department.id, department.name, CONCAT(m.first_name, " ", m.last_name) 'Manager' 
+-- FROM employee
+-- INNER JOIN role ON (employee.role_id=role.id)
+-- INNER JOIN department ON (role.department_id=department.id)
+-- INNER JOIN employee m 
+-- ON (employee.manager_id = m.id);

@@ -10,24 +10,6 @@ const connection = mysql.createConnection({
     database: "employee_DB"
 });
 
-//Query variables
-// const viewAll = "SELECT employee.id, employee.first_name, employee.last_name, role.title, role.salary, department.name, CONCAT(m.first_name, ' ', m.last_name) 'Manager' FROM employee INNER JOIN role ON (employee.role_id=role.id) INNER JOIN department ON (role.department_id=department.id) INNER JOIN employee m  ON (employee.manager_id = m.id);";
-
-
-const viewAll =
-    "SELECT employee.id, employee.first_name, employee.last_name, role.title, role.salary, employee.role_id," +
-    " role.id, employee.manager_id, role.department_id, department.id, department.name, NULL 'Manager' FROM employee" +
-    " INNER JOIN role ON (employee.role_id=role.id)" +
-    " INNER JOIN department ON (role.department_id=department.id)" +
-    " WHERE (employee.manager_id IS NULL)" +
-    " UNION" +
-    " SELECT employee.id, employee.first_name, employee.last_name, role.title, role.salary, employee.role_id, role.id," +
-    " employee.manager_id, role.department_id, department.id, department.name, CONCAT(m.first_name, ' ', m.last_name) 'Manager' FROM employee" +
-    " INNER JOIN role ON (employee.role_id=role.id)" +
-    " INNER JOIN department ON (role.department_id=department.id)" +
-    " INNER JOIN employee m" +
-    " ON (employee.manager_id = m.id)";
-
 //Class Constructor??
 
 const userMenu = () => {
@@ -57,7 +39,7 @@ const userMenu = () => {
 //
 
 //View DATA
-const viewData = () => {
+const viewData = async () => {
     inquirer.prompt([
         {
             name: "action",
@@ -65,7 +47,7 @@ const viewData = () => {
             message: "What data would you like to view?",
             choices: ["View All Employees", "View All Employees by Department", "View All Employees By Manager", "Departments", "Roles"]
         }
-    ]).then(answer => {
+    ]).then(async answer => {
         switch (answer.action) {
             case "View All Employees":
                 connection.query("SELECT * FROM allemployees ORDER BY id ASC", function (err, res) {
@@ -75,40 +57,77 @@ const viewData = () => {
                 })
                 break;
             case "View All Employees by Department":
-                connection.query("SELECT * FROM allemployees ORDER BY name DESC;", function (err, res) {
-                    if (err) throw err;
-                    console.table(res);
-                    userMenu();
-                })
+                viewByDepartment();
                 break;
             case "View All Employees By Manager":
-                connection.query("SELECT * FROM allemployees ORDER BY Manager ASC;", function (err, res) {
-                    if (err) throw err;
-                    console.table(res);
-                    userMenu();
-                })
+
+                viewByManager();
+                // connection.query("SELECT * FROM allemployees ORDER BY Manager ASC;", function (err, res) {
+                //     if (err) throw err;
+                //     console.table(res);
+                //     userMenu();
+                // })
                 break;
             case "Departments":
-                connection.query("SELECT * FROM department", function (err, res) {
-                    if (err) throw err;
-                    console.table(res);
-                    userMenu();
-                })
+                let results = await getDepartments();
+                console.table(results);
+                userMenu();
                 break;
             case "Roles":
-                connection.query("SELECT * FROM role", function (err, res) {
-                    if (err) throw err;
-                    console.table(res);
-                    userMenu();
-                })
+                let data = await getRoles();
+                console.table(data);
+                userMenu();
                 break;
         }
 
     });
 
 }
+const viewByDepartment = async () => {
+    let results = await getDepartments();
+    let items = results.map(result => ({
+        name: result.name
+    }));
+    let response = await inquirer.prompt([
+        {
+            name: "departmentName",
+            type: "rawlist",
+            message: "What Department?",
+            choices: items
+
+        }
+    ]);
+    connection.query("SELECT * FROM allemployees WHERE name = (?) ORDER BY id ASC", [response.departmentName], function (err, res) {
+        if (err) throw err;
+        console.table(res);
+        userMenu();
+    });
+}
+
+const viewByManager = async () => {
+    let response = await getEmployees();
+    let possibleManagers = response.map(person => ({
+        name: person.first_name + " " + person.last_name,
+        value: person.id
+    }));
+    let data = await inquirer.prompt([
+        {
+            name: "managerName",
+            type: "rawlist",
+            message: "What Manager?",
+            choices: possibleManagers
+
+        }
+    ]);
+    connection.query("SELECT * FROM employee WHERE manager_id = (?) ORDER BY id ASC", [data.managerName], function (err, res) {
+        if (err) throw err;
+        console.table(res);
+        userMenu();
+    });
+}
 
 
+//ADD DATA
 const addData = async () => {
     let answer = await inquirer.prompt([
         {
@@ -125,7 +144,6 @@ const addData = async () => {
             break;
         case "department":
             newDepartment();
-            // newDepartment();
             break;
         case "roles":
             newRole();
@@ -137,6 +155,14 @@ const newEmployee = async () => {
     let employeeFinal = [];
     let results = await getDepartments();
     let items = results.map(result => result.name);
+    let response = await getEmployees();
+    let possibleManagers = response.map(person => ({
+        name: person.first_name + " " + person.last_name,
+        value: person.id
+    }));
+
+    // let data = await getRoles();
+    // let roleChoices = data.map(datapoint => datapoint.name);
     console.log("Let's get some more info:")
     let data = await inquirer.prompt([
         {
@@ -150,14 +176,27 @@ const newEmployee = async () => {
             message: "Last name?"
         },
         {
+            name: "managerName",
+            type: "rawlist",
+            message: "Manager?",
+            choices: possibleManagers
+        },
+        {
             name: "departmentName",
             type: "rawlist",
             message: "Department?",
             choices: items
 
         }])
-    employeeFinal.push({ first_name: data.first_name })
-    employeeFinal.push({ last_name: data.last_name })
+    employeeFinal.push({ first_name: data.first_name });
+    employeeFinal.push({ last_name: data.last_name });
+    // let managerChoice = data.managerName.value;
+    // console.log(managerChoice);
+    // console.log("Data.managerName", data.managerName);
+    // console.log(possibleManagers);
+    employeeFinal.push({ manager_id: data.managerName })
+
+
     const department = data.departmentName;
     connection.query('SELECT * FROM department', function (err, res) {
         if (err) throw (err);
@@ -195,43 +234,26 @@ const newEmployee = async () => {
                         let roleid = res[0].id;
                         console.log(roleid)
                         employeeFinal.push({ role_id: roleid });
-                        let query = "INSERT INTO employee (first_name, last_name, role_id) VALUES(?, ?, ?)";
+                        console.log(employeeFinal);
+                        let query = "INSERT INTO employee (first_name, last_name, manager_id, department_id, role_id) VALUES(?, ?, ?, ?, ?)";
                         let args = [employeeFinal[0].first_name,
                         employeeFinal[1].last_name,
-                        employeeFinal[3].role_id];
+                        employeeFinal[2].manager_id,
+                        employeeFinal[3].department_id,
+                        employeeFinal[4].role_id];
                         console.log(args);
                         connection.query(query, args, function (err, res) {
-                            if (err) throw (err);
+                            if (err) throw err;
                             console.log("Congrats! You've added a new employee");
                             userMenu();
                         }
                         )
                     });
-
-
                 }
                 )
-
         })
-        // console.log("roleName");
-
-
-
     })
 }
-
-
-// const splitRoles = () => {
-//     let query = "INSERT INTO employee (first_name, last_name, role_id) VALUES(?, ?, ?)";
-//     let args = [employeeFinal[0].first_name,
-//     employeeFinal[1].last_name,
-//     employeeFinal[3].role_id];
-//     console.log(args);
-//     connection.query(query, args, function (err, res) {
-//         if (err) throw (err);
-//     }
-//     )
-// }
 
 const newDepartment = () => {
     inquirer.prompt([
@@ -315,7 +337,34 @@ function getDepartments() {
     })
 }
 
+function getRoles() {
+    return new Promise((resolve, reject) => {
+        connection.query("SELECT * FROM role", function (err, results) {
+            if (err) reject(err);
+            resolve(results);
+            let roles = [];
+            for (const result of results) {
+                roles.push(result.title);
+            }
+            return roles;
+        });
+    })
+}
 
+
+function getEmployees() {
+    return new Promise((resolve, reject) => {
+        connection.query("SELECT * FROM employee", function (err, results) {
+            if (err) reject(err);
+            resolve(results);
+            let employees = [];
+            for (const result of results) {
+                employees.push(result.title);
+            }
+            return employees;
+        });
+    })
+}
 
 connection.connect(err => {
     if (err) throw err;
