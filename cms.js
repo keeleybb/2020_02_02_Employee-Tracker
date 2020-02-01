@@ -141,11 +141,11 @@ const newEmployee = async () => {
     let data = await inquirer.prompt([
         {
             type: "input",
-            name: "first-name",
+            name: "first_name",
             message: "First Name?"
         },
         {
-            name: "last-name",
+            name: "last_name",
             type: "input",
             message: "Last name?"
         },
@@ -170,7 +170,6 @@ const newEmployee = async () => {
         // console.log(id);
         connection.query(`SELECT role.title FROM role INNER JOIN department ON (role.department_id = department.id) WHERE department.id= ${id};`, function (err, res) {
             if (err) throw err;
-            // console.log(res);
             inquirer.prompt(
                 [
                     {
@@ -187,33 +186,52 @@ const newEmployee = async () => {
                     }
                 ]
             )
-                .then(answers => {
+                .then(async answers => {
                     let data = answers.roleName;
                     console.log("where? ", data);
                     connection.query(`SELECT * FROM role WHERE role.title="${data}";`, function (err, res) {
                         if (err) throw err;
-                        console.log("What are we getting back ", res);
-                        let filteredRoles = res.filter(function (res) {
-                            return res.title == data;
-                        })
-                        let id = filteredRoles[0].id;
-                        employeeFinal.push({ role_id: id });
-                    })
-                    connection.query("INSERT INTO employee (first_name, last_name, role_id) VALUES(?, ?, ?)", {
-                        first_name: employeeFinal.first_name,
-                        last_name: employeeFinal.last_name,
-                        role_id: employeeFinal.role_id
-                    }, function (err, res) {
-                        if (err) throw (err);
-                    }
-                    )
-                    // console.log("roleName");
-                })
+                        console.log("What are we getting back ", res[0].id);
+                        let roleid = res[0].id;
+                        console.log(roleid)
+                        employeeFinal.push({ role_id: roleid });
+                        let query = "INSERT INTO employee (first_name, last_name, role_id) VALUES(?, ?, ?)";
+                        let args = [employeeFinal[0].first_name,
+                        employeeFinal[1].last_name,
+                        employeeFinal[3].role_id];
+                        console.log(args);
+                        connection.query(query, args, function (err, res) {
+                            if (err) throw (err);
+                            console.log("Congrats! You've added a new employee");
+                            userMenu();
+                        }
+                        )
+                    });
+
+
+                }
+                )
+
         })
+        // console.log("roleName");
+
+
 
     })
 }
 
+
+// const splitRoles = () => {
+//     let query = "INSERT INTO employee (first_name, last_name, role_id) VALUES(?, ?, ?)";
+//     let args = [employeeFinal[0].first_name,
+//     employeeFinal[1].last_name,
+//     employeeFinal[3].role_id];
+//     console.log(args);
+//     connection.query(query, args, function (err, res) {
+//         if (err) throw (err);
+//     }
+//     )
+// }
 
 const newDepartment = () => {
     inquirer.prompt([
@@ -237,7 +255,7 @@ const newDepartment = () => {
 
 //New Role
 const newRole = async () => {
-    let results = await getItems();
+    let results = await getDepartments();
     let items = results.map(result => result.name);
     inquirer.prompt([
         {
