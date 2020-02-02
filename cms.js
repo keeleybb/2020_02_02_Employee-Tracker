@@ -29,7 +29,7 @@ const userMenu = () => {
                 viewData();
                 break;
             case "UPDATE":
-                updateData();
+                updateRole();
                 break;
             case "EXIT":
                 connection.end();
@@ -119,7 +119,7 @@ const viewByManager = async () => {
 
         }
     ]);
-    connection.query("SELECT * FROM employee WHERE manager_id = (?) ORDER BY id ASC", [data.managerName], function (err, res) {
+    connection.query(`SELECT * FROM allEmployees WHERE EXISTS(SELECT * FROM employee WHERE manager_id = ${data.managerName})`, function (err, res) {
         if (err) throw err;
         console.table(res);
         userMenu();
@@ -270,7 +270,8 @@ const newDepartment = () => {
 
             }, function (err, res) {
                 if (err) throw err;
-                console.log(res.affectedRows + "Added")
+                console.log(res.affectedRows + " Added");
+                userMenu();
             });
     })
 }
@@ -308,18 +309,54 @@ const newRole = async () => {
             connection.query("INSERT INTO role (title, salary, department_id) VALUES (?, ?, ?)", [answer.title, parseInt(answer.salary), id],
                 function (err, res) {
                     console.log(`You have added this role: ${answer.title}`)
-                })
+                    userMenu();
+                });
 
-        })
-    })
+        });
+    });
 }
 
 
 
 
 
-const updateData = () => {
-    console.log("update Data");
+const updateRole = async () => {
+    let response = await getEmployees();
+    let employees = response.map(person => ({
+        name: person.first_name + " " + person.last_name,
+        value: person.id
+    }));
+    let updateEmployee = await inquirer.prompt([
+        {
+            name: "employeeName",
+            type: "rawlist",
+            message: "Which employee would you like to update?",
+            choices: employees
+        }
+    ])
+
+    let data = await getRoles();
+    // let roleChoices = data.map(datapoint => datapoint.title);
+    let roleChoices = data.map(role => ({
+        name: role.title,
+        value: role.id
+    }));
+    console.log(roleChoices);
+    let updateRole = await inquirer.prompt([
+        {
+            name: "roleName",
+            type: "rawlist",
+            message: "Role?",
+            choices: roleChoices
+        }
+    ]);
+    console.log("Role: ", updateRole.roleName);
+    console.log("Employee: ", updateEmployee.employeeName);
+    connection.query("UPDATE employee SET role_id = (?) WHERE id = (?)", [updateRole.roleName, updateEmployee.employeeName],
+        function (err, res) {
+            console.log(`Employee Updated`)
+            userMenu();
+        });
 }
 
 
@@ -346,6 +383,7 @@ function getRoles() {
             for (const result of results) {
                 roles.push(result.title);
             }
+            console.log(roles);
             return roles;
         });
     })
