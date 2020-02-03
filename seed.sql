@@ -34,3 +34,5 @@ VALUES("Sarah", "Bartlet", (SELECT id FROM role WHERE title="sales manager"), (S
 
 INSERT INTO employee (first_name, last_name, role_id, department_id)
 VALUES("John", "Sampson", (SELECT id FROM role WHERE title="marketing manager"), (SELECT department_id FROM role WHERE title="marketing manager"));
+
+UPDATE employee SET manager_id=(SELECT * FROM(SELECT id FROM employee WHERE first_name="John" AND last_name="Sampson")tblTmp) WHERE id=2;

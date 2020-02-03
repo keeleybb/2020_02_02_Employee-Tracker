@@ -304,7 +304,7 @@ const updateRole = async () => {
         name: person.first_name + " " + person.last_name,
         value: person.id
     }));
-    console.log("You can update employee roles: ");
+    // console.log("You can update employee roles: ");
     let updateEmployee = await inquirer.prompt([
         {
             name: "employeeName",
@@ -315,12 +315,11 @@ const updateRole = async () => {
     ])
 
     let data = await getRoles();
-    // let roleChoices = data.map(datapoint => datapoint.title);
     let roleChoices = data.map(role => ({
         name: role.title,
         value: role.id
     }));
-    console.log(roleChoices);
+    // console.log(roleChoices);
     let updateRole = await inquirer.prompt([
         {
             name: "roleName",
